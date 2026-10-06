@@ -91,10 +91,7 @@ function App() {
     month: 'long',
     day: 'numeric',
   });
-  const tzName = new Intl.DateTimeFormat('en-US', { timeZoneName: 'long' })
-    .formatToParts(new Date())
-    .find(p => p.type === 'timeZoneName')?.value || 'Local Time';
-  const today = `${todayStr} • ${tzName}`;
+  const today = todayStr;
 
   const filteredJobs = useMemo(() => jobs.filter(job => matchesSearch(job, searchQuery)), [jobs, searchQuery]);
   const filteredCallTodayJobs = useMemo(
