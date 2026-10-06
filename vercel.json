@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://lead-tracker-shbr.onrender.com/api/:path*"
+    }
+  ]
+}

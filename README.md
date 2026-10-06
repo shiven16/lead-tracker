@@ -34,7 +34,7 @@ Create a `.env` file in the repository root (the directory containing this READM
 DATABASE_URL=postgres://localhost:5432/job_followup_dashboard_dev
 PORT=3000
 AUTH_SECRET=replace-with-a-long-random-secret
-CORS_ORIGIN=http://localhost:5173
+CORS_ORIGIN=https://lead-tracker-phi-seven.vercel.app,http://localhost:5173
 ```
 
 Adjust the connection string for your local PostgreSQL user, password, host, and port as needed. Replace `AUTH_SECRET` with a long random value before deployment. Set `CORS_ORIGIN` to the frontend origin if it runs on a different domain from the API. The API reads this root `.env` when started using the commands below.
@@ -57,7 +57,7 @@ npm install --prefix web
 npm run dev --prefix web
 ```
 
-Open the local URL printed by Vite (usually `http://localhost:5173`). Vite proxies `/api` requests to the API at `http://localhost:3000`. To use a different API origin, set `VITE_API_BASE_URL` in `web/.env` (for example, `http://localhost:3000`); the frontend adds the `/api` path itself.
+Open the local URL printed by Vite (usually `http://localhost:5173`). Vite proxies `/api` requests to `VITE_API_BASE_URL` in `web/.env`. The Vercel deployment proxies `/api` to the Render API, keeping browser requests and the session cookie on the frontend origin. Set `CORS_ORIGIN` on the API service to the frontend origin; multiple origins can be comma-separated.
 
 ### Demo access
 
