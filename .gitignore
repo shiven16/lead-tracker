@@ -1,2 +1,6 @@
-PLAN.md
+*.md
 db/seed.sql
+node_modules/
+.env
+server/.env
+npm-debug.log*
