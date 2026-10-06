@@ -1,4 +1,5 @@
 *.md
+!README.md
 db/seed.sql
 node_modules/
 .env
