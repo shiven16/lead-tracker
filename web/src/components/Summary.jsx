@@ -57,9 +57,9 @@ export default function Summary({ summary }) {
             </strong>
           </span>
         </div>
-        <span className="font-body-sm text-body-sm text-secondary">
+        {/* <span className="font-body-sm text-body-sm text-secondary">
           1 technician roster active • Denise B.
-        </span>
+        </span> */}
       </div>
     </section>
   );

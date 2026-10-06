@@ -20,7 +20,7 @@ export default function CallToday({ jobs, onMarkContacted, searchQuery = '' }) {
             {jobs.length} people waiting on you
           </span>
         </div>
-        <span className="font-body-sm text-body-sm text-secondary hidden sm:inline">Priority triage • Immediate follow-ups</span>
+        {/* <span className="font-body-sm text-body-sm text-secondary hidden sm:inline">Priority triage • Immediate follow-ups</span> */}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-md">
