@@ -3,6 +3,7 @@ import cors from 'cors';
 import { createHmac, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { query, withTransaction } from './db.js';
+import { sendIntakeNotification } from './email.js';
 
 const scrypt = promisify(scryptCallback);
 const SESSION_COOKIE = 'thaw_session';
@@ -23,7 +24,7 @@ export function createApp() {
     origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
     credentials: true
   }));
-  app.use(express.json());
+  app.use(express.json({ limit: '20kb' }));
 
   app.get('/health', async (_req, res, next) => {
     try {
@@ -64,6 +65,50 @@ export function createApp() {
 
   app.get('/api/auth/session', requireAuth, (req, res) => {
     res.json({ user: req.user });
+  });
+
+  app.post('/api/public/intake', async (req, res, next) => {
+    try {
+      // Quietly discard basic bot submissions without revealing the honeypot.
+      if (normalizeOptionalString(req.body?.company_website)) {
+        return res.status(202).json({ ok: true });
+      }
+
+      const payload = validatePublicIntake(req.body);
+      if (payload.error) {
+        return res.status(400).json({ error: payload.error });
+      }
+
+      const result = await query(
+        `
+          INSERT INTO jobs (customer_name, phone, issue, source, stage, urgent, notes)
+          VALUES ($1, $2, $3, 'website', 'new', $4, $5)
+          RETURNING id, customer_name, phone, issue, urgent, notes
+        `,
+        [
+          payload.value.customer_name,
+          payload.value.phone,
+          payload.value.issue,
+          payload.value.urgent,
+          payload.value.notes
+        ]
+      );
+
+      const job = result.rows[0];
+      let notificationSent = false;
+      try {
+        notificationSent = await sendIntakeNotification(job);
+        if (!notificationSent) {
+          console.warn('Service request saved; admin email is not configured.');
+        }
+      } catch (emailError) {
+        console.error('Service request saved, but admin email notification failed:', emailError.message);
+      }
+
+      res.status(201).json({ ok: true, notification_sent: notificationSent });
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.use('/api', requireAuth);
@@ -446,6 +491,33 @@ function validateJobCreate(body) {
       notes
     }
   };
+}
+
+function validatePublicIntake(body) {
+  const customerName = normalizeRequiredString(body?.customer_name, 'customer_name');
+  if (customerName.error) return customerName;
+
+  const phone = normalizeRequiredString(body?.phone, 'phone');
+  if (phone.error) return phone;
+
+  const issue = normalizeRequiredString(body?.issue, 'issue');
+  if (issue.error) return issue;
+
+  if (customerName.value.length > 120 || phone.value.length > 40 || issue.value.length > 2000) {
+    return { error: 'Please keep the customer name, phone, and job details within the field limits.' };
+  }
+
+  const notes = normalizeOptionalString(body?.notes) ?? '';
+  if (notes.length > 2000) {
+    return { error: 'notes must be 2000 characters or fewer.' };
+  }
+
+  const urgent = body?.urgent ?? false;
+  if (typeof urgent !== 'boolean') {
+    return { error: 'urgent must be a boolean.' };
+  }
+
+  return { value: { customer_name: customerName.value, phone: phone.value, issue: issue.value, urgent, notes } };
 }
 
 function validateJobPatch(body) {

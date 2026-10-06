@@ -6,6 +6,7 @@ import CallToday from './components/CallToday';
 import Pipeline from './components/Pipeline';
 import AddJobDrawer from './components/AddJobDrawer';
 import Login from './components/Login';
+import ServiceRequest from './components/ServiceRequest';
 import { getSession, logout, getJobs, getSummary, getCallToday, createJob, updateJob, addContact } from './api';
 
 function App() {
@@ -101,6 +102,10 @@ function App() {
 
   if (authLoading) {
     return <main className="min-h-screen bg-frost flex items-center justify-center text-secondary">Checking your session…</main>;
+  }
+
+  if (location.pathname === '/request-service') {
+    return <ServiceRequest />;
   }
 
   if (!user) {

@@ -8,6 +8,7 @@ const api = axios.create({
 export const getSession = () => api.get('/auth/session').then(res => res.data);
 export const login = (credentials) => api.post('/auth/login', credentials).then(res => res.data);
 export const logout = () => api.post('/auth/logout');
+export const submitPublicIntake = (data) => api.post('/public/intake', data).then(res => res.data);
 export const getJobs = (params) => api.get('/jobs', { params }).then(res => res.data);
 export const getSummary = () => api.get('/summary').then(res => res.data);
 export const getCallToday = () => api.get('/call-today').then(res => res.data);

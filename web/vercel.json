@@ -3,6 +3,14 @@
     {
       "source": "/api/:path*",
       "destination": "https://lead-tracker-shbr.onrender.com/api/:path*"
+    },
+    {
+      "source": "/login",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/request-service",
+      "destination": "/index.html"
     }
   ]
 }

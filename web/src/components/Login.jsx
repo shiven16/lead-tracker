@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { login } from '../api';
 
 const DEMO_EMAIL = 'denise@thaw.demo';
@@ -79,6 +80,12 @@ export default function Login({ onAuthenticated }) {
             </div>
           )}
         </div>
+        <p className="mt-5 text-center text-sm text-secondary">
+          Need a repair?{' '}
+          <Link to="/request-service" className="font-semibold text-primary-container underline underline-offset-4 hover:text-primary">
+            Request service
+          </Link>
+        </p>
       </section>
     </main>
   );

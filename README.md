@@ -35,9 +35,12 @@ DATABASE_URL=postgres://localhost:5432/job_followup_dashboard_dev
 PORT=3000
 AUTH_SECRET=replace-with-a-long-random-secret
 CORS_ORIGIN=https://lead-tracker-phi-seven.vercel.app,http://localhost:5173
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=
+ADMIN_EMAIL=
 ```
 
-Adjust the connection string for your local PostgreSQL user, password, host, and port as needed. Replace `AUTH_SECRET` with a long random value before deployment. Set `CORS_ORIGIN` to the frontend origin if it runs on a different domain from the API. The API reads this root `.env` when started using the commands below.
+Adjust the connection string for your local PostgreSQL user, password, host, and port as needed. Replace `AUTH_SECRET` with a long random value before deployment. `RESEND_FROM_EMAIL` must use a sender address verified by Resend; these three email settings enable admin notifications for public service requests. The API reads this root `.env` when started using the commands below.
 
 Install the API dependencies and start the server:
 
@@ -59,6 +62,8 @@ npm run dev --prefix web
 
 Open the local URL printed by Vite (usually `http://localhost:5173`). Vite proxies `/api` requests to `VITE_API_BASE_URL` in `web/.env`. The Vercel deployment proxies `/api` to the Render API, keeping browser requests and the session cookie on the frontend origin. Set `CORS_ORIGIN` on the API service to the frontend origin; multiple origins can be comma-separated.
 
+Clients can submit a request at `/request-service`, linked from the login page. Submissions are saved as new website jobs and emailed to `ADMIN_EMAIL` when Resend is configured.
+
 ### Demo access
 
 The configured Neon database has Denise's demo account provisioned. On the login page, choose **Click here to get demo credentials** or enter:
@@ -75,6 +80,7 @@ The demo user's password is stored as a scrypt hash. Sessions expire after eight
 | `GET` | `/health` | Check API and database availability |
 | `GET` | `/api/jobs` | List jobs; optional `stage`, `urgent`, `open`, and `q` filters |
 | `POST` | `/api/jobs` | Create a job |
+| `POST` | `/api/public/intake` | Public service request form; creates a new website job |
 | `GET` | `/api/jobs/:id` | Get one job and its contact history |
 | `PATCH` | `/api/jobs/:id` | Update job fields |
 | `POST` | `/api/jobs/:id/contact` | Mark a job contacted and add a contact log entry |
