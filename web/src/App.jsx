@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Summary from './components/Summary';
 import CallToday from './components/CallToday';
@@ -8,6 +9,7 @@ import Login from './components/Login';
 import { getSession, logout, getJobs, getSummary, getCallToday, createJob, updateJob, addContact } from './api';
 
 function App() {
+  const location = useLocation();
   const [jobs, setJobs] = useState([]);
   const [summary, setSummary] = useState(null);
   const [callTodayJobs, setCallTodayJobs] = useState([]);
@@ -105,7 +107,13 @@ function App() {
   }
 
   if (!user) {
-    return <Login onAuthenticated={setUser} />;
+    return location.pathname === '/login'
+      ? <Login onAuthenticated={setUser} />
+      : <Navigate to="/login" replace />;
+  }
+
+  if (location.pathname !== '/') {
+    return <Navigate to="/" replace />;
   }
 
   return (
