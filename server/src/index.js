@@ -1,8 +1,13 @@
-import 'dotenv/config';
-import { createApp } from './app.js';
-import { pool } from './db.js';
+import dotenv from 'dotenv';
 
-const port = Number(process.env.PORT ?? 3000);
+dotenv.config();
+dotenv.config({ path: 'server/.env' });
+
+// Import modules that create the pg Pool only after dotenv has populated the environment.
+const { createApp } = await import('./app.js');
+const { pool } = await import('./db.js');
+
+const port = Number(process.env.PORT ?? 3001);
 if (process.env.NODE_ENV === 'production' && !process.env.AUTH_SECRET) {
   throw new Error('AUTH_SECRET must be configured in production.');
 }
