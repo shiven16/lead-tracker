@@ -33,9 +33,11 @@ Create a `.env` file in the repository root (the directory containing this READM
 ```env
 DATABASE_URL=postgres://localhost:5432/job_followup_dashboard_dev
 PORT=3000
+AUTH_SECRET=replace-with-a-long-random-secret
+CORS_ORIGIN=http://localhost:5173
 ```
 
-Adjust the connection string for your local PostgreSQL user, password, host, and port as needed. The API reads this root `.env` when started using the commands below.
+Adjust the connection string for your local PostgreSQL user, password, host, and port as needed. Replace `AUTH_SECRET` with a long random value before deployment. Set `CORS_ORIGIN` to the frontend origin if it runs on a different domain from the API. The API reads this root `.env` when started using the commands below.
 
 Install the API dependencies and start the server:
 
@@ -56,6 +58,15 @@ npm run dev --prefix web
 ```
 
 Open the local URL printed by Vite (usually `http://localhost:5173`). Vite proxies `/api` requests to the API at `http://localhost:3000`. To use a different API origin, set `VITE_API_BASE_URL` in `web/.env` (for example, `http://localhost:3000`); the frontend adds the `/api` path itself.
+
+### Demo access
+
+The configured Neon database has Denise's demo account provisioned. On the login page, choose **Click here to get demo credentials** or enter:
+
+- Email: `denise@thaw.demo`
+- Password: `ThawDemo2026!`
+
+The demo user's password is stored as a scrypt hash. Sessions expire after eight hours. A fresh database needs its own `dashboard_users` account provisioned before login is available.
 
 ## API
 

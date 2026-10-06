@@ -38,6 +38,8 @@ FROM call_today;
 
 ## Useful Local Checks
 
+The deployed Neon database has the dashboard authentication table and Denise demo account provisioned separately. Fresh databases created from the checked-in migration need a `dashboard_users` table and account before authenticated API access will work.
+
 Summary counts by stage:
 
 ```sh

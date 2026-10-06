@@ -1,11 +1,15 @@
 import axios from 'axios';
 
 const api = axios.create({
+  withCredentials: true,
   baseURL: import.meta.env.VITE_API_BASE_URL
     ? `${import.meta.env.VITE_API_BASE_URL}/api`
     : '/api',
 });
 
+export const getSession = () => api.get('/auth/session').then(res => res.data);
+export const login = (credentials) => api.post('/auth/login', credentials).then(res => res.data);
+export const logout = () => api.post('/auth/logout');
 export const getJobs = (params) => api.get('/jobs', { params }).then(res => res.data);
 export const getSummary = () => api.get('/summary').then(res => res.data);
 export const getCallToday = () => api.get('/call-today').then(res => res.data);

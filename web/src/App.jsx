@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from './components/Header';
 import Summary from './components/Summary';
 import CallToday from './components/CallToday';
 import Pipeline from './components/Pipeline';
 import AddJobDrawer from './components/AddJobDrawer';
-import { getJobs, getSummary, getCallToday, createJob, updateJob, addContact } from './api';
+import Login from './components/Login';
+import { getSession, logout, getJobs, getSummary, getCallToday, createJob, updateJob, addContact } from './api';
 
 function App() {
   const [jobs, setJobs] = useState([]);
@@ -13,6 +14,8 @@ function App() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     try {
@@ -25,6 +28,7 @@ function App() {
       setSummary(summaryRes);
       setCallTodayJobs(callTodayRes.jobs);
     } catch (err) {
+      if (err.response?.status === 401) setUser(null);
       console.error("Failed to load data", err);
     } finally {
       setIsLoading(false);
@@ -32,8 +36,26 @@ function App() {
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    getSession()
+      .then(({ user: sessionUser }) => setUser(sessionUser))
+      .catch(() => setUser(null))
+      .finally(() => setAuthLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (user) loadData();
+  }, [user, loadData]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      setUser(null);
+      setJobs([]);
+      setCallTodayJobs([]);
+      setSummary(null);
+    }
+  };
 
   const handleSaveJob = async (jobData) => {
     try {
@@ -72,16 +94,23 @@ function App() {
     .find(p => p.type === 'timeZoneName')?.value || 'Local Time';
   const today = `${todayStr} • ${tzName}`;
 
-  const filteredJobs = searchQuery
-    ? jobs.filter(job =>
-        job.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.issue.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : jobs;
+  const filteredJobs = useMemo(() => jobs.filter(job => matchesSearch(job, searchQuery)), [jobs, searchQuery]);
+  const filteredCallTodayJobs = useMemo(
+    () => callTodayJobs.filter(job => matchesSearch(job, searchQuery)),
+    [callTodayJobs, searchQuery]
+  );
+
+  if (authLoading) {
+    return <main className="min-h-screen bg-frost flex items-center justify-center text-secondary">Checking your session…</main>;
+  }
+
+  if (!user) {
+    return <Login onAuthenticated={setUser} />;
+  }
 
   return (
     <div className="bg-frost font-body-lg text-on-surface min-h-screen pb-10">
-      <Header />
+      <Header user={user} onLogout={handleLogout} />
 
       <main className="w-full">
         <div className="max-w-[1200px] mx-auto px-margin-desktop py-space-sm">
@@ -94,17 +123,19 @@ function App() {
               </h1>
               <p className="font-body-sm text-body-sm text-secondary mt-0.5">{today}</p>
             </div>
-            <div className="flex items-center gap-space-sm shrink-0">
-              <div className="relative">
+            <div className="flex items-center gap-space-sm w-full sm:w-auto sm:shrink-0">
+              <div className="relative min-w-0 flex-1 sm:flex-none">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-secondary">search</span>
                 <input
                   type="text"
                   id="globalJobSearch"
-                  placeholder="Search jobs or customer..."
-                  className="h-10 w-64 pl-9 pr-3 bg-surface border border-line rounded-[10px] text-body-sm font-body-sm text-on-surface focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container"
+                  placeholder="Search name, phone, issue..."
+                  aria-label="Search jobs by customer, phone, issue, source, or notes"
+                  className="h-10 w-full sm:w-64 pl-9 pr-9 bg-surface border border-line rounded-[10px] text-body-sm font-body-sm text-on-surface focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                 />
+                {searchQuery && <button type="button" aria-label="Clear search" onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-secondary hover:text-on-surface">×</button>}
               </div>
               <button
                 type="button"
@@ -125,8 +156,8 @@ function App() {
           ) : (
             <>
               <Summary summary={summary} />
-              <CallToday jobs={callTodayJobs} onMarkContacted={handleMarkContacted} />
-              <Pipeline jobs={filteredJobs} onChangeStage={handleChangeStage} />
+              <CallToday jobs={filteredCallTodayJobs} onMarkContacted={handleMarkContacted} searchQuery={searchQuery} />
+              <Pipeline jobs={filteredJobs} onChangeStage={handleChangeStage} searchQuery={searchQuery} />
             </>
           )}
         </div>
@@ -139,6 +170,24 @@ function App() {
       />
     </div>
   );
+}
+
+function matchesSearch(job, rawQuery) {
+  const terms = normalizeSearch(rawQuery).split(' ').filter(Boolean);
+  if (terms.length === 0) return true;
+  const searchableText = normalizeSearch([
+    job.customer_name,
+    job.phone,
+    job.issue,
+    job.source,
+    job.stage,
+    job.notes
+  ].filter(Boolean).join(' '));
+  return terms.every(term => searchableText.includes(term));
+}
+
+function normalizeSearch(value) {
+  return String(value ?? '').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
 export default App;

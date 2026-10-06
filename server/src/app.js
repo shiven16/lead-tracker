@@ -1,6 +1,12 @@
 import express from 'express';
 import cors from 'cors';
+import { createHmac, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
+import { promisify } from 'node:util';
 import { query, withTransaction } from './db.js';
+
+const scrypt = promisify(scryptCallback);
+const SESSION_COOKIE = 'thaw_session';
+const SESSION_TTL_SECONDS = 60 * 60 * 8;
 
 const STAGES = ['new', 'waiting_on_quote', 'waiting_on_yes', 'scheduled', 'done'];
 const SOURCES = ['office_call', 'website', 'text', 'referral', 'other'];
@@ -9,7 +15,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export function createApp() {
   const app = express();
 
-  app.use(cors());
+  app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173', credentials: true }));
   app.use(express.json());
 
   app.get('/health', async (_req, res, next) => {
@@ -20,6 +26,40 @@ export function createApp() {
       next(error);
     }
   });
+
+  app.post('/api/auth/login', async (req, res, next) => {
+    try {
+      const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+      const password = typeof req.body?.password === 'string' ? req.body.password : '';
+      const result = await query(
+        'SELECT id, email, display_name, password_hash FROM dashboard_users WHERE email = $1',
+        [email]
+      );
+      const user = result.rows[0];
+
+      if (!user || !(await verifyPassword(password, user.password_hash))) {
+        return res.status(401).json({ error: 'Email or password is incorrect.' });
+      }
+
+      const token = signSession({ id: user.id, email: user.email, name: user.display_name });
+      res.cookie(SESSION_COOKIE, token, sessionCookieOptions());
+      res.json({ user: { id: user.id, email: user.email, name: user.display_name } });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/auth/logout', (_req, res) => {
+    const clearOptions = { ...sessionCookieOptions(), maxAge: undefined };
+    res.clearCookie(SESSION_COOKIE, clearOptions);
+    res.status(204).end();
+  });
+
+  app.get('/api/auth/session', requireAuth, (req, res) => {
+    res.json({ user: req.user });
+  });
+
+  app.use('/api', requireAuth);
 
   app.get('/api/jobs', async (req, res, next) => {
     try {
@@ -283,6 +323,75 @@ export function createApp() {
   });
 
   return app;
+}
+
+function sessionSecret() {
+  if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('AUTH_SECRET must be configured in production.');
+  }
+  return 'local-development-only-change-before-deploying';
+}
+
+function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: SESSION_TTL_SECONDS * 1000
+  };
+}
+
+function signSession(user) {
+  const payload = Buffer.from(JSON.stringify({
+    ...user,
+    exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS
+  })).toString('base64url');
+  const signature = createHmac('sha256', sessionSecret()).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
+}
+
+function readSession(token) {
+  if (!token || typeof token !== 'string') return null;
+  const [payload, signature] = token.split('.');
+  if (!payload || !signature) return null;
+
+  const expected = createHmac('sha256', sessionSecret()).update(payload).digest();
+  let actual;
+  try {
+    actual = Buffer.from(signature, 'base64url');
+  } catch {
+    return null;
+  }
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
+
+  try {
+    const session = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    return session.exp > Math.floor(Date.now() / 1000)
+      ? { id: session.id, email: session.email, name: session.name }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function requireAuth(req, res, next) {
+  const cookie = (req.headers.cookie ?? '').split(';').map((part) => part.trim())
+    .find((part) => part.startsWith(`${SESSION_COOKIE}=`));
+  const session = readSession(cookie?.slice(SESSION_COOKIE.length + 1));
+  if (!session) return res.status(401).json({ error: 'Authentication required.' });
+  req.user = session;
+  next();
+}
+
+async function verifyPassword(password, storedHash) {
+  const separator = storedHash.indexOf(':');
+  if (separator < 1) return false;
+  const salt = storedHash.slice(0, separator);
+  const expected = Buffer.from(storedHash.slice(separator + 1), 'hex');
+  const actual = await scrypt(password, salt, expected.length);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
 function validateJobCreate(body) {

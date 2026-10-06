@@ -1,12 +1,12 @@
 import React from 'react';
 
-export default function CallToday({ jobs, onMarkContacted }) {
+export default function CallToday({ jobs, onMarkContacted, searchQuery = '' }) {
   if (!jobs || jobs.length === 0) {
     return (
       <section aria-labelledby="allCaughtUpHeading" className="mb-space-xl flex flex-col items-center justify-center p-space-xl bg-surface border border-line rounded-xl text-center">
         <span className="material-symbols-outlined text-[48px] text-success mb-space-sm">check_circle</span>
-        <h2 className="font-headline-sm text-headline-sm text-on-surface mb-1">All caught up</h2>
-        <p className="font-body-lg text-body-lg text-secondary">No priority calls required today.</p>
+        <h2 className="font-headline-sm text-headline-sm text-on-surface mb-1">{searchQuery ? 'No matching follow-ups' : 'All caught up'}</h2>
+        <p className="font-body-lg text-body-lg text-secondary">{searchQuery ? 'Try another name, phone number, or issue.' : 'No priority calls required today.'}</p>
       </section>
     );
   }

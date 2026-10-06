@@ -3,6 +3,9 @@ import { createApp } from './app.js';
 import { pool } from './db.js';
 
 const port = Number(process.env.PORT ?? 3000);
+if (process.env.NODE_ENV === 'production' && !process.env.AUTH_SECRET) {
+  throw new Error('AUTH_SECRET must be configured in production.');
+}
 const app = createApp();
 
 const server = app.listen(port, () => {

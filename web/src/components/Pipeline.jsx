@@ -17,7 +17,7 @@ const STAGE_BADGE = {
   done: 'bg-success-tint text-success',
 };
 
-export default function Pipeline({ jobs, onChangeStage }) {
+export default function Pipeline({ jobs, onChangeStage, searchQuery = '' }) {
   const [activeStage, setActiveStage] = useState(null); // null = show all
 
   const jobsByStage = STAGES.reduce((acc, stage) => {
@@ -58,6 +58,12 @@ export default function Pipeline({ jobs, onChangeStage }) {
           <span>{activePhaseCount} Active {activePhaseCount === 1 ? 'Phase' : 'Phases'}</span>
         </div>
       </div>
+
+      {jobs.length === 0 && searchQuery && (
+        <p className="mb-space-md rounded-lg border border-line bg-surface px-4 py-3 text-sm text-secondary">
+          No jobs match your search. Try a different customer, phone number, or issue.
+        </p>
+      )}
 
       {/* Stage filter tabs */}
       <div className="flex flex-wrap items-center gap-2 mb-space-md">
